@@ -2,6 +2,10 @@ import json
 import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+class SpanishNameUpdate(BaseModel):
+    spanish_name: str
 
 app = FastAPI(title="Pokedex API")
 
@@ -61,3 +65,39 @@ def get_pokemon_by_attack(attack: int):
         if base.get("Attack") == attack:
             result.append(pkm)
     return result
+
+@app.patch("/api/pokemon/name/{name}/spanish")
+def update_spanish_name(name: str, data: SpanishNameUpdate):
+    """
+    Actualiza el nombre en español de un Pokemon y lo guarda en el JSON.
+    Se utiliza PATCH porque estamos aplicando una modificación parcial a un recurso.
+    """
+    found = False
+    updated_pkm = None
+    for pkm in pokemon_data:
+        pkm_name = pkm.get("name", {})
+        if isinstance(pkm_name, dict):
+            english_name = pkm_name.get("english", "")
+        else:
+            english_name = str(pkm_name)
+            
+        if english_name.lower() == name.lower():
+            if isinstance(pkm_name, dict):
+                pkm["name"]["spanish"] = data.spanish_name
+            else:
+                pkm["name"] = {"english": english_name, "spanish": data.spanish_name}
+            
+            found = True
+            updated_pkm = pkm
+            break
+            
+    if not found:
+        raise HTTPException(status_code=404, detail="Pokemon no encontrado")
+        
+    try:
+        with open(JSON_PATH, "w", encoding="utf-8") as file:
+            json.dump(pokemon_data, file, indent=2, ensure_ascii=False)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error guardando los datos: {str(e)}")
+        
+    return {"message": "Nombre en español actualizado exitosamente", "pokemon": updated_pkm}

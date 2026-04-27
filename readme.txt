@@ -40,3 +40,18 @@ Busca y devuelve en formato de *array list* todos los Pokémon que contengan el 
 
 **Descripción:**
 Devuelve un *array list* con todos los Pokémon cuyo valor base de ataque sea exactamente igual al indicando en la URL.
+
+### 4. Actualizar o Agregar Nombre en Español
+**Ruta:** `/api/pokemon/name/<nombre>/spanish`
+**Método HTTP:** `PATCH`
+**Ejemplo:** `http://127.0.0.1:8000/api/pokemon/name/Bulbasaur/spanish`
+**Body (JSON):**
+```json
+{
+  "spanish_name": "Bulbasaur"
+}
+```
+
+**Descripción:**
+Verifica primero si el Pokémon existe buscándolo por su nombre (en inglés). Si lo encuentra, le agrega o actualiza el campo del nombre en idioma **español** directamente en el archivo `pokedex.json`. 
+*Se utiliza el método PATCH ya que su propósito semántico en las API REST es realizar una modificación parcial a un recurso, lo cual encaja perfectamente en este caso.*

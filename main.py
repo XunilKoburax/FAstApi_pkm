@@ -1,13 +1,17 @@
 import json
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from auth.router import router as auth_router
+from auth.security import JWTBearer
 
 class SpanishNameUpdate(BaseModel):
     spanish_name: str
 
 app = FastAPI(title="Pokedex API")
+
+app.include_router(auth_router)
 
 # Setup CORS
 app.add_middleware(
@@ -101,3 +105,22 @@ def update_spanish_name(name: str, data: SpanishNameUpdate):
         raise HTTPException(status_code=500, detail=f"Error guardando los datos: {str(e)}")
         
     return {"message": "Nombre en español actualizado exitosamente", "pokemon": updated_pkm}
+
+@app.get("/api/secure/pokemon/search", dependencies=[Depends(JWTBearer())])
+def secure_search_pokemon(name: str):
+    """
+    Ruta protegida para buscar un pokemon por nombre usando un parámetro de consulta (?name=...).
+    Requiere token JWT de autenticación.
+    """
+    for pkm in pokemon_data:
+        pkm_name = pkm.get("name", {})
+        if isinstance(pkm_name, dict):
+            english_name = pkm_name.get("english", "")
+        else:
+            english_name = str(pkm_name)
+            
+        if english_name.lower() == name.lower():
+            return pkm
+            
+    raise HTTPException(status_code=404, detail="Pokemon no encontrado")
+

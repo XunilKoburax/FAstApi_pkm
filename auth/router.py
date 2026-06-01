@@ -30,3 +30,26 @@ async def user_login(user: UserLoginSchema):
 @router.get("/protected", dependencies=[Depends(JWTBearer())])
 async def protected_route():
     return {"message": "You are viewing this because you are an authenticated admin!"}
+
+POKEDEX_FILE = os.path.join(os.path.dirname(__file__), "..", "pokedex.json")
+
+try:
+    with open(POKEDEX_FILE, "r", encoding="utf-8") as file:
+        pokemon_data = json.load(file)
+except Exception as e:
+    pokemon_data = []
+
+@router.get("/pokemon/search", dependencies=[Depends(JWTBearer())])
+async def search_pokemon(name: str):
+    for pkm in pokemon_data:
+        pkm_name = pkm.get("name", {})
+        if isinstance(pkm_name, dict):
+            english_name = pkm_name.get("english", "")
+        else:
+            english_name = str(pkm_name)
+            
+        if english_name.lower() == name.lower():
+            return pkm
+            
+    raise HTTPException(status_code=404, detail="Pokemon no encontrado")
+

@@ -1,15 +1,16 @@
 import time
 from typing import Dict
 import jwt
-from fastapi import Request, HTTPException
+from fastapi import Request, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 JWT_SECRET = "supersecretkey123"
 JWT_ALGORITHM = "HS256"
 
-def sign_jwt(user_id: str) -> Dict[str, str]:
+def sign_jwt(user_id: str, role: str) -> Dict[str, str]:
     payload = {
         "user_id": user_id,
+        "role": role,
         "expires": time.time() + 6000
     }
     token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
@@ -46,3 +47,31 @@ class JWTBearer(HTTPBearer):
         if payload:
             isTokenValid = True
         return isTokenValid
+
+async def get_current_user(token: str = Depends(JWTBearer())) -> dict:
+    payload = decode_jwt(token)
+    if not payload or "user_id" not in payload:
+        raise HTTPException(status_code=403, detail="Token inválido o expirado.")
+    
+    from database import get_db_connection
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, role, name FROM users WHERE username = ?", (payload["user_id"],))
+    user = cursor.fetchone()
+    conn.close()
+    
+    if not user:
+        raise HTTPException(status_code=403, detail="Usuario no encontrado.")
+        
+    return {
+        "id": user["id"],
+        "username": user["username"],
+        "role": user["role"],
+        "name": user["name"]
+    }
+
+async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Acceso denegado: Se requiere rol de administrador.")
+    return current_user
+

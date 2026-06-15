@@ -12,20 +12,23 @@ class UserLoginSchema(BaseModel):
 
 USERS_FILE = os.path.join(os.path.dirname(__file__), "users.json")
 
-def check_user(data: UserLoginSchema):
-    if os.path.exists(USERS_FILE):
-        with open(USERS_FILE, "r") as f:
-            users_db = json.load(f)
-            for user in users_db.get("users", []):
-                if user["username"] == data.username and user["password"] == data.password:
-                    return True
-    return False
+from database import get_db_connection
+
+def check_user_db(data: UserLoginSchema):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT username, role FROM users WHERE username = ? AND password = ?", (data.username, data.password))
+    user = cursor.fetchone()
+    conn.close()
+    return user
 
 @router.post("/login")
 async def user_login(user: UserLoginSchema):
-    if check_user(user):
-        return sign_jwt(user.username)
+    db_user = check_user_db(user)
+    if db_user:
+        return sign_jwt(db_user["username"], db_user["role"])
     raise HTTPException(status_code=401, detail="Wrong login details!")
+
 
 @router.get("/protected", dependencies=[Depends(JWTBearer())])
 async def protected_route():

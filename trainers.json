@@ -1,0 +1,11 @@
+{
+  "trainers": [],
+  "admins": [
+    {
+      "id": 1,
+      "username": "admin",
+      "name": "Administrator",
+      "role": "admin"
+    }
+  ]
+}
